@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Small-Cap Momentum Scanner</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="hdr-section">
+            <div class="session-badge" id="sessionBadge">
+                <span class="session-dot market" id="sessionDot"></span>
+                <span class="session-label" id="sessionName">MARKET</span>
+            </div>
+        </div>
+        <div class="hdr-section hdr-center">
+            <div class="hdr-chip">
+                <span class="chip-label">Market Countdown</span>
+                <span class="chip-value" id="countdown">00:00:00</span>
+            </div>
+            <div class="hdr-divider"></div>
+            <div class="hdr-chip">
+                <span class="status-dot" id="appStatusDot"></span>
+                <span class="chip-value" id="appStatusLabel">Starting</span>
+            </div>
+            <div class="hdr-divider"></div>
+            <div class="hdr-chip">
+                <span class="status-dot" id="ibkrStatusDot"></span>
+                <span class="chip-value" id="ibkrStatusLabel">IBKR</span>
+            </div>
+            <div class="hdr-divider"></div>
+            <div class="hdr-chip hdr-meta">
+                <span id="lastScanLabel">--</span>
+            </div>
+        </div>
+        <div class="hdr-section">
+            <button class="gear-btn" onclick="toggleFilters()" title="Screener Settings">⚙</button>
+        </div>
+    </header>
+
+    <!-- Two-Column Layout -->
+    <div class="main-layout">
+
+    <!-- Momentum Radar (Left) -->
+    <div class="radar-column">
+        <section class="momentum-section">
+            <h2 id="momentumRadarTitle">⚡ SCANNER RADAR</h2>
+            <div class="momentum-list" id="momentumList">
+                <div class="momentum-item">
+                    <div style="text-align: center; color: var(--text-muted);">
+                        Loading momentum stocks...
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div><!-- end radar-column -->
+
+    <!-- Settings Panel (Right) -->
+    <div class="filters-panel" id="filtersPanel">
+        <div class="settings-header-row">
+            <div class="settings-title">Professional Scanner Settings</div>
+            <div class="settings-actions-inline">
+                <select id="filterPreset" class="header-preset-select" onchange="applySettingsPreset(this.value)" title="Fast preset templates">
+                    <option value="custom" selected>Custom</option>
+                    <option value="gap_go">Gap &amp; Go</option>
+                    <option value="momentum">Momentum</option>
+                    <option value="high_of_day_break">High of Day Break</option>
+                    <option value="low_float_runner">Low Float Runner</option>
+                    <option value="large_cap_breakout">Large Cap Breakout</option>
+                    <option value="vwap_reclaim">VWAP Reclaim</option>
+                </select>
+                <button class="mini-btn" onclick="resetSettingsDefaults()" title="Reset all fields to default scanner values">Reset Defaults</button>
+                <button class="mini-btn" onclick="saveNamedPreset()" title="Save current panel values to a named preset">Save Preset</button>
+                <button class="mini-btn" onclick="loadNamedPreset()" title="Load a previously saved named preset">Load Preset</button>
+                <button class="mini-btn" onclick="exportCurrentPreset()" title="Export current preset as JSON">Export Preset</button>
+                <button class="mini-btn" onclick="importPresetFromJson()" title="Import preset from JSON">Import Preset</button>
+                <button class="mini-btn" onclick="manageNamedPresets()" title="Rename or delete saved presets">Modify Presets</button>
+            </div>
+        </div>
+
+        <div class="settings-scroll">
+            <div class="master-toggle-row">
+                <button class="master-toggle-btn" id="masterToggleBtn" onclick="toggleAllSections()" title="Expand / Collapse All">▶ Expand All</button>
+            </div>
+            <div class="settings-section active" data-section>
+                <button class="section-toggle" type="button" onclick="toggleSettingsSection(this)">🕒 Market Session</button>
+                <div class="section-body settings-grid-3">
+                    <div class="filter-group">
+                        <label title="Preferred session for monitoring">Session Type</label>
+                        <select id="filterSessionType">
+                            <option value="premarket">Premarket</option>
+                            <option value="market" selected>Regular</option>
+                            <option value="after_hours">After Hours</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label title="Countdown to next market session">Market Countdown</label>
+                        <input type="text" id="filterMarketCountdown" value="00:00:00" readonly>
+                    </div>
+                    <div class="filter-group">
+                        <label title="How often to refresh table and radar">Auto Refresh Interval (sec)</label>
+                        <div class="dual-input">
+                            <input type="number" id="filterAutoRefresh" min="3" max="120" step="1" value="12">
+                            <input type="range" id="filterAutoRefreshSlider" min="3" max="120" step="1" value="12" class="dual-slider">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-section" data-section>
+                <button class="section-toggle" type="button" onclick="toggleSettingsSection(this)">🌐 Universe Settings</button>
+                <div class="section-body settings-grid-2">
+                    <div class="filter-group">
+                        <label title="How many top movers to scan">Universe Size</label>
+                        <div class="btn-stack" id="universeStack">
+                            <button class="stack-btn active" data-value="100" onclick="selectUniverseSize(this)">100</button>
+                            <button class="stack-btn" data-value="200" onclick="selectUniverseSize(this)">200</button>
+                            <button class="stack-btn" data-value="300" onclick="selectUniverseSize(this)">300</button>
+                            <button class="stack-btn" data-value="400" onclick="selectUniverseSize(this)">400</button>
+                            <button class="stack-btn" data-value="500" onclick="selectUniverseSize(this)">500</button>
+                        </div>
+                        <input type="hidden" id="filterMoversScanLimit" value="100">
+                    </div>
+                    <div class="filter-group">
+                        <label title="Included exchanges (UI signal)">Exchanges</label>
+                        <div class="checklist-inline">
+                            <label><input type="checkbox" id="filterExchangeNasdaq" checked> NASDAQ</label>
+                            <label><input type="checkbox" id="filterExchangeNyse" checked> NYSE</label>
+                            <label><input type="checkbox" id="filterExchangeAmex" checked> AMEX</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-section" data-section>
+                <button class="section-toggle" type="button" onclick="toggleSettingsSection(this)">💲 Price Filters</button>
+                <div class="section-body settings-grid-4">
+                    <div class="filter-group">
+                        <label title="Minimum stock price">Price Min ($)</label>
+                        <div class="dual-input">
+                            <input type="number" id="filterPriceMin" min="0" max="20" step="1" value="0">
+                            <input type="range" id="filterPriceMinSlider" min="0" max="20" step="1" value="0" class="dual-slider">
+                        </div>
+                    </div>
+                    <div class="filter-group">
+                        <label title="Maximum stock price">Price Max ($)</label>
+                        <div class="dual-input">
+                            <input type="number" id="filterPriceMax" min="1" max="500" step="1" value="20">
+                            <input type="range" id="filterPriceMaxSlider" min="1" max="500" step="1" value="20" class="dual-slider">
+                        </div>
+                    </div>
+                    <div class="filter-group">
+                        <label title="Gap from previous close (UI filter)">Gap %</label>
+                        <div class="dual-input">
+                            <input type="number" id="filterGapMin" min="0" max="200" step="1" value="0">
+                            <input type="range" id="filterGapMinSlider" min="0" max="200" step="1" value="0" class="dual-slider">
+                        </div>
+                    </div>
+                    <div class="filter-group">
+                        <label title="Minimum intraday % change">Change %</label>
+                        <div class="dual-input">
+                            <input type="number" id="filterChangeMin" min="0" step="1" value="3">
+                            <input type="range" id="filterChangeMinSlider" min="0" max="100" step="1" value="3" class="dual-slider">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-section" data-section>
+                <button class="section-toggle" type="button" onclick="toggleSettingsSection(this)">💧 Liquidity Filters</button>
+                <div class="section-body settings-grid-3">
+                    <div class="filter-group">
+                        <label title="Minimum intraday traded shares">Minimum Volume</label>
+                        <div class="dual-input">
+                            <input type="number" id="filterVolumeMin" min="10000" max="2000000" step="10000" value="10000">
+                            <input type="range" id="filterVolumeMinSlider" min="10000" max="2000000" step="10000" value="10000" class="dual-slider">
+                        </div>
+                    </div>
+                    <div class="filter-group">
+                        <label title="Relative volume multiple">Relative Volume (x)</label>
+                        <div class="dual-input">
+                            <input type="number" id="filterRvolMin" min="1" step="1" value="1">
+                            <input type="range" id="filterRvolMinSlider" min="1" max="500" step="1" value="1" class="dual-slider">
+                        </div>
+                    </div>
+                    <div class="filter-group">
+                        <label title="Average daily volume (UI filter)">Average Daily Volume</label>
+                        <div class="dual-input">
+                            <input type="number" id="filterAvgDailyVolume" min="0" max="10000000" step="100000" value="0">
+                            <input type="range" id="filterAvgDailyVolumeSlider" min="0" max="10000000" step="100000" value="0" class="dual-slider">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-section" data-section>
+                <button class="section-toggle" type="button" onclick="toggleSettingsSection(this)">🏗 Float / Structure</button>
+                <div class="section-body settings-grid-3">
+                    <div class="filter-group">
+                        <label title="Minimum float in millions (UI filter)">Float Min (M)</label>
+                        <div class="dual-input">
+                            <input type="number" id="filterFloatMin" min="0" step="1" value="0">
+                            <input type="range" id="filterFloatMinSlider" min="0" max="2000" step="1" value="0" class="dual-slider">
+                        </div>
+                    </div>
+                    <div class="filter-group">
+                        <label title="Maximum float in millions">Float Max (M)</label>
+                        <div class="dual-input">
+                            <input type="number" id="filterFloatMax" min="1" step="1" value="20">
+                            <input type="range" id="filterFloatMaxSlider" min="1" max="2000" step="1" value="20" class="dual-slider">
+                        </div>
+                    </div>
+                    <div class="filter-group">
+                        <label title="Shares outstanding in millions (UI filter)">Shares Outstanding (M)</label>
+                        <div class="dual-input">
+                            <input type="number" id="filterSharesOutstanding" min="0" max="5000" step="1" value="0">
+                            <input type="range" id="filterSharesOutstandingSlider" min="0" max="5000" step="1" value="0" class="dual-slider">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-section" data-section>
+                <button class="section-toggle" type="button" onclick="toggleSettingsSection(this)">📈 Technical Filters</button>
+                <div class="section-body settings-grid-3 toggles-grid">
+                    <label class="toggle-item" title="Price above EMA 9 (UI signal)"><input type="checkbox" id="filterEma9"> EMA 9</label>
+                    <label class="toggle-item" title="Use EMA alignment as a proxy for EMA20 trend"><input type="checkbox" id="filterEma20"> EMA 20</label>
+                    <label class="toggle-item" title="Price above VWAP (UI signal)"><input type="checkbox" id="filterVwap"> VWAP</label>
+                    <label class="toggle-item" title="Breakout above premarket high (UI signal)"><input type="checkbox" id="filterBreakPmHigh"> Breakout above Pre-Market High</label>
+                    <label class="toggle-item" title="Breakout above day high (UI signal)"><input type="checkbox" id="filterBreakDayHigh"> Breakout above Day High</label>
+                    <label class="toggle-item" title="Consolidation setup detection (UI signal)"><input type="checkbox" id="filterConsolidation"> Consolidation Detection</label>
+                    <div class="filter-group">
+                        <label title="EMA directional requirement — arrows show how many EMAs (20/50/200) price is above">EMA Criteria</label>
+                        <select id="filterEmaMinArrows">
+                            <option value="0">All (no filter)</option>
+                            <option value="3">↑↑↑ Price above EMA 20, 50 &amp; 200</option>
+                            <option value="2">↑↑ Price above 2 of 3 EMAs</option>
+                            <option value="1">↑ Price above at least 1 EMA</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-section" data-section>
+                <button class="section-toggle" type="button" onclick="toggleSettingsSection(this)">⚡ Momentum Signals</button>
+                <div class="section-body settings-grid-4">
+                    <div class="filter-group">
+                        <label title="Trigger level for momentum notifications">Momentum Alert Change %</label>
+                        <div class="dual-input">
+                            <input type="number" id="filterMomentumChangeMin" min="0" max="100" step="1" value="12">
+                            <input type="range" id="filterMomentumChangeMinSlider" min="0" max="100" step="1" value="12" class="dual-slider">
+                        </div>
+                    </div>
+                    <div class="filter-group">
+                        <label title="Minimum RVOL to trigger momentum alerts">Momentum Alert RVOL</label>
+                        <div class="dual-input">
+                            <input type="number" id="filterMomentumRvolMin" min="0" max="100" step="1" value="5">
+                            <input type="range" id="filterMomentumRvolMinSlider" min="0" max="100" step="1" value="5" class="dual-slider">
+                        </div>
+                    </div>
+                    <div class="filter-group">
+                        <label title="Float cap used by momentum logic">Momentum Alert Float Max (M)</label>
+                        <div class="dual-input">
+                            <input type="number" id="filterMomentumFloatMin" min="1" max="500" step="1" value="10">
+                            <input type="range" id="filterMomentumFloatMinSlider" min="1" max="500" step="1" value="10" class="dual-slider">
+                        </div>
+                    </div>
+                    <div class="filter-group">
+                        <label title="Volume acceleration multiplier (UI signal)">Momentum Volume Spike (x)</label>
+                        <div class="dual-input">
+                            <input type="number" id="filterMomentumSpike" min="1" max="50" step="1" value="2">
+                            <input type="range" id="filterMomentumSpikeSlider" min="1" max="50" step="1" value="2" class="dual-slider">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-section" data-section>
+                <button class="section-toggle" type="button" onclick="toggleSettingsSection(this)">📰 News / Catalyst</button>
+                <div class="section-body settings-grid-3">
+                    <label class="toggle-item" title="Only show tickers with recent news or catalyst"><input type="checkbox" id="filterWithNews"> With News</label>
+                </div>
+            </div>
+
+            <div class="settings-section" data-section>
+                <button class="section-toggle" type="button" onclick="toggleSettingsSection(this)">� Risk Control Filters</button>
+                <div class="section-body settings-grid-3">
+                    <label class="toggle-item" title="Exclude halted stocks (UI signal)"><input type="checkbox" id="filterExcludeHalted" checked> Halted Stocks Filter</label>
+                    <div class="filter-group">
+                        <label title="Maximum spread % allowed (UI signal)">Spread Filter (%)</label>
+                        <div class="dual-input">
+                            <input type="number" id="filterSpreadMax" min="0" max="20" step="1" value="5">
+                            <input type="range" id="filterSpreadMaxSlider" min="0" max="20" step="1" value="5" class="dual-slider">
+                        </div>
+                    </div>
+                    <label class="toggle-item" title="Only shortable stocks (UI signal)"><input type="checkbox" id="filterShortableOnly"> Shortable Filter</label>
+                </div>
+            </div>
+
+            <div class="settings-section" data-section id="playbookSection">
+                <button class="section-toggle" type="button" onclick="toggleSettingsSection(this)">📘 Preset Trading Playbook</button>
+                <div class="section-body">
+                    <div class="preset-insight" id="presetInsight">
+                        <div class="preset-insight-title">Select a scanner preset to view trading logic.</div>
+                        <div class="preset-insight-grid">
+                            <div>
+                                <div class="preset-insight-label">Filters</div>
+                                <ul id="presetFiltersList"></ul>
+                            </div>
+                            <div>
+                                <div class="preset-insight-label">Trading Logic</div>
+                                <p id="presetLogicText"></p>
+                            </div>
+                            <div>
+                                <div class="preset-insight-label">Detailed Purpose</div>
+                                <p id="presetPurposeText"></p>
+                            </div>
+                            <div>
+                                <div class="preset-insight-label">Typical Trader Behavior</div>
+                                <ul id="presetBehaviorList"></ul>
+                            </div>
+                            <div>
+                                <div class="preset-insight-label">Use Case</div>
+                                <p id="presetUseCaseText"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div><!-- end settings-scroll -->
+
+        <div class="filter-actions">
+            <button id="applyFiltersBtn" class="apply-btn" onclick="applyScannerSettings()">Apply & Restart</button>
+        </div>
+    </div><!-- end filters-panel -->
+
+    </div><!-- end main-layout -->
+
+    <!-- Alert Notification -->
+    <div id="alertNotification" style="display: none;"></div>
+
+    <!-- Scripts -->
+    <script src="/static/app.js"></script>
+</body>
+</html>
