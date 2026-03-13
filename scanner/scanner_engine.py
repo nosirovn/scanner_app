@@ -17,6 +17,11 @@ from config import (
     GLOBAL_PRICE_MAX,
     ALLOWED_EXCHANGES,
 )
+import sys
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+
 from data.market_data import MarketDataFetcher
 from scanner.level_calculator import LevelCalculator
 from scanner.obvious_stock import ObviousStockDetector
